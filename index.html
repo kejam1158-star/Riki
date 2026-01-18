@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Catur HP - Termux Edition</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            background-color: #121212;
+            color: white;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #status {
+            margin-bottom: 10px;
+            font-size: 14px;
+            background: #1e1e1e;
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: 1px solid #333;
+        }
+
+        /* Papan Catur Responsive */
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 11vw); /* Pakai vw agar pas di lebar HP */
+            grid-template-rows: repeat(8, 11vw);
+            border: 2px solid #444;
+        }
+
+        .square {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 7vw; /* Ukuran bidak */
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .white { background-color: #dee3e6; }
+        .black { background-color: #8ca2ad; }
+        
+        /* Highlight jalan yang bisa dilewati */
+        .highlight { position: relative; }
+        .highlight::after {
+            content: "";
+            width: 20%;
+            height: 20%;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 50%;
+            position: absolute;
+        }
+
+        .selected { background-color: #f7d35e !important; }
+
+        .controls { margin-top: 20px; }
+        button {
+            padding: 10px 20px;
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="status">Giliran: Kamu (Putih)</div>
+
+    <div id="board" class="board"></div>
+
+    <div class="controls">
+        <button onclick="resetGame()">Ulang Game</button>
+    </div>
+
+<script>
+    const boardElement = document.getElementById('board');
+    const statusElement = document.getElementById('status');
+    const game = new Chess();
+    let selectedSquare = null;
+
+    const pieces = {
+        'p': '♟', 'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚',
+        'P': '♙', 'R': '♖', 'N': '♘', 'B': '♗', 'Q': '♕', 'K': '♔'
+    };
+
+    function renderBoard() {
+        boardElement.innerHTML = '';
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const squareName = String.fromCharCode(97 + c) + (8 - r);
+                const square = document.createElement('div');
+                square.className = `square ${(r + c) % 2 === 0 ? 'white' : 'black'}`;
+                square.dataset.square = squareName;
+                
+                const piece = game.get(squareName);
+                if (piece) {
+                    square.innerText = pieces[piece.color === 'w' ? piece.type.toUpperCase() : piece.type];
+                    square.style.color = piece.color === 'w' ? '#000' : '#d00';
+                }
+
+                square.onclick = () => onSquareClick(squareName);
+                boardElement.appendChild(square);
+            }
+        }
+    }
+
+    function onSquareClick(square) {
+        if (game.turn() === 'b') return; // Jangan klik pas giliran AI
+
+        if (selectedSquare === square) {
+            selectedSquare = null;
+        } else {
+            const move = game.move({
+                from: selectedSquare,
+                to: square,
+                promotion: 'q'
+            });
+
+            if (move) {
+                selectedSquare = null;
+                renderBoard();
+                updateStatus();
+                setTimeout(makeAIMove, 400);
+            } else {
+                selectedSquare = square;
+            }
+        }
+        updateHighlights();
+    }
+
+    function updateHighlights() {
+        renderBoard();
+        if (selectedSquare) {
+            const sq = document.querySelector(`[data-square="${selectedSquare}"]`);
+            if (sq) sq.classList.add('selected');
+            
+            const moves = game.moves({ square: selectedSquare, verbose: true });
+            moves.forEach(m => {
+                document.querySelector(`[data-square="${m.to}"]`).classList.add('highlight');
+            });
+        }
+    }
+
+    function makeAIMove() {
+        const moves = game.moves();
+        if (moves.length === 0) return;
+
+        // AI Pintar dikit: cari yang bisa makan bidak
+        const captureMoves = moves.filter(m => m.includes('x'));
+        const move = captureMoves.length > 0 
+            ? captureMoves[Math.floor(Math.random() * captureMoves.length)]
+            : moves[Math.floor(Math.random() * moves.length)];
+
+        game.move(move);
+        renderBoard();
+        updateStatus();
+    }
+
+    function updateStatus() {
+        let status = game.turn() === 'w' ? "Giliran: Kamu" : "Giliran: AI...";
+        if (game.in_checkmate()) status = "SKAKMAT! Permainan Berakhir.";
+        else if (game.in_draw()) status = "SERI!";
+        statusElement.innerText = status;
+    }
+
+    function resetGame() {
+        game.reset();
+        renderBoard();
+        updateStatus();
+    }
+
+    renderBoard();
+<script src="https://pl28501504.effectivegatecpm.com/06/c0/5c/06c05cf2c3b7b31bd23e43f7c2a771c2.js"></script>
+</script>
+</body>
+</html>
+
